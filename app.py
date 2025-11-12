@@ -1,7 +1,7 @@
-import streamlit as st
 import pandas as pd
 import re # Untuk filter jurusan
 import ast # Untuk membersihkan data 'jenjang'
+import plotly.express as px # <-- TAMBAHKAN INI
 
 # --- 1. Konfigurasi Halaman ---
 st.set_page_config(
@@ -171,9 +171,26 @@ if not df_hasil.empty:
         st.bar_chart(jurusan_count)
     with col_grafik2:
         st.subheader("Distribusi Jenjang Pendidikan")
-        jenjang_list = df_hasil['jenjang'].apply(parse_jenjang)
-        jenjang_exploded = jenjang_list.explode()
+          # ... (jenjang_count data preparation remains the same) ...
         jenjang_count = jenjang_exploded.value_counts()
-        st.pie_chart(jenjang_count)
+        
+        # --- MULAI KODE BARU (GANTI BAGIAN st.pie_chart LAMA) ---
+        # Konversi Pandas Series menjadi DataFrame untuk Plotly
+        df_jenjang = jenjang_count.reset_index()
+        df_jenjang.columns = ['Jenjang', 'Jumlah']
+        
+        # Buat Plotly Pie Chart (donut chart dengan hole=0.4)
+        fig = px.pie(
+            df_jenjang, 
+            values='Jumlah', 
+            names='Jenjang', 
+            title='Perbandingan Jenjang Pendidikan',
+            hole=0.4 # Membuatnya menjadi Donut Chart
+        )
+        
+        # Tampilkan Plotly Chart
+        st.plotly_chart(fig, use_container_width=True)
+        # --- AKHIR KODE BARU ---
 else:
     st.info("Tidak ada data terfilter untuk ditampilkan di grafik.")
+
