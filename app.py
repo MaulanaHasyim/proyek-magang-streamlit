@@ -1,12 +1,11 @@
 import streamlit as st
 import pandas as pd
 import re # Untuk filter jurusan
-
-import plotly.express as px # <-- TAMBAHKAN INI
+import ast # Untuk membersihkan data 'jenjang'
 
 # --- 1. Konfigurasi Halaman ---
 st.set_page_config(
-    page_title="Filter Lowongan Magang",
+    page_title="DashboardLowongan Magang",
     page_icon="🔎",
     layout="wide"
 )
@@ -138,7 +137,7 @@ total_perusahaan = df_hasil['perusahaan.nama_perusahaan'].nunique()
 col1, col2, col3 = st.columns(3)
 col1.metric("Total Lowongan Ditemukan", f"{total_lowongan:,}")
 col2.metric("Total Kuota Magang", f"{total_kuota:,}")
-col3.metric("Total Perusahaan Unik", f"{total_perusahaan:,}")
+col3.metric("Total Perusahaan", f"{total_perusahaan:,}")
 
 st.markdown("---") # Garis pemisah
 
@@ -155,9 +154,6 @@ kolom_tampil = [
 ]
 st.dataframe(df_hasil[kolom_tampil], use_container_width=True, hide_index=True)
 
-# (Opsional) Tampilkan data mentah
-with st.expander("Tampilkan Data Mentah Lengkap (Hasil Filter)"):
-    st.dataframe(df_hasil, hide_index=True)
 
 st.markdown("---") # Garis pemisah
 
@@ -170,30 +166,5 @@ if not df_hasil.empty:
         jurusan_flat_list = [j for sublist in df_hasil['program_studi'].str.split(', ') if isinstance(sublist, list) for j in sublist]
         jurusan_count = pd.Series(jurusan_flat_list).value_counts().head(10)
         st.bar_chart(jurusan_count)
-    with col_grafik2:
-        st.subheader("Distribusi Jenjang Pendidikan")
-        
-        # ... (jenjang_count data preparation remains the same) ...
-        jenjang_count = jenjang_exploded.value_counts()
-        
-        # --- MULAI KODE BARU (GANTI BAGIAN st.pie_chart LAMA) ---
-        # Konversi Pandas Series menjadi DataFrame untuk Plotly
-        df_jenjang = jenjang_count.reset_index()
-        df_jenjang.columns = ['Jenjang', 'Jumlah']
-        
-        # Buat Plotly Pie Chart (donut chart dengan hole=0.4)
-        fig = px.pie(
-            df_jenjang, 
-            values='Jumlah', 
-            names='Jenjang', 
-            title='Perbandingan Jenjang Pendidikan',
-            hole=0.4 # Membuatnya menjadi Donut Chart
-        )
-        
-        # Tampilkan Plotly Chart
-        st.plotly_chart(fig, use_container_width=True)
-        # --- AKHIR KODE BARU ---
 else:
     st.info("Tidak ada data terfilter untuk ditampilkan di grafik.")
-
-
