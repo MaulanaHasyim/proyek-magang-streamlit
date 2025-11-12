@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import re # Untuk filter jurusan
 import ast # Untuk membersihkan data 'jenjang' (disimpan untuk load data)
-import plotly.express as px # <--- Disimpan jika Anda ingin Treemap lagi nanti
 
 # --- 1. Konfigurasi Halaman ---
 st.set_page_config(
@@ -159,3 +158,4 @@ if not df_hasil.empty:
     
 else:
     st.info("Tidak ada data terfilter untuk ditampilkan di grafik.")
+
