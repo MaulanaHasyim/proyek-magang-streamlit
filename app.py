@@ -1,32 +1,24 @@
-﻿import streamlit as st
+import streamlit as st
 import pandas as pd
 import re # Ini untuk filter jurusan yang canggih
 
 # --- 1. Konfigurasi Halaman ---
 st.set_page_config(
-    page_title="Filter Lowongan Magang",
-    page_icon="🔎",
-    layout="wide" # Layout "wide" agar tabelnya muat
+    page_title="Dashboard Lowongan Magang",
+    page_icon="📊",
+    layout="wide"
 )
 
-# --- 2. Fungsi Load Data (Paling Penting) ---
-# @st.cache_data: Ini adalah 'jurus sakti' Streamlit.
-# Ini akan menyimpan data di cache, jadi 37.000 baris data itu
-# hanya di-load SATU KALI, bukan setiap kali user memfilter.
+# --- 2. Fungsi Load Data (Cache) ---
 @st.cache_data
 def load_data():
-    # Muat CSV Anda yang SUDAH BERSIH
     df = pd.read_csv("data_lowongan_BERSIH.csv")
     
     # --- Siapkan Filter Jurusan ---
-    # Kolom 'program_studi' Anda isinya "Sastra Cina, Bahasa Mandarin"
-    # Kita harus pisahkan, buat jadi unik, dan urutkan
     all_jurusan_set = set()
     for item_list in df['program_studi'].str.split(', '):
-        # Cek jika item_list bukan list (misal: data kosong/NaN)
         if isinstance(item_list, list):
-            all_jurusan_set.update(item_list) # update() untuk set
-            
+            all_jurusan_set.update(item_list)
     list_jurusan_unik = sorted(list(all_jurusan_set))
     
     # --- Siapkan Filter Lokasi ---
@@ -35,17 +27,19 @@ def load_data():
     
     return df, list_jurusan_unik, list_provinsi_unik, list_kota_unik
 
-# --- 3. Muat Data (Tampilkan Spinner) ---
-with st.spinner('Sedang memuat 37.000+ data lowongan...'):
+# --- 3. Muat Data ---
+with st.spinner('Memuat 37.000+ data lowongan...'):
     df, list_jurusan_unik, list_provinsi_unik, list_kota_unik = load_data()
 
 # ===============================================
 # --- 4. Tampilan Web / Interface (UI) ---
 # ===============================================
-st.title('🔎 Dashboard Filter Lowongan Magang KEMNAKER')
+st.title('📊 Dashboard Analitik Lowongan Magang KEMNAKER')
 st.write(f"Total data lowongan di-crawl: {len(df)} baris")
 
+# ===============================================
 # --- 5. Sidebar untuk Filter ---
+# ===============================================
 st.sidebar.header('⚙️ Filter Pencarian')
 
 # Filter 1: Posisi (Text Search)
@@ -53,19 +47,28 @@ posisi_search = st.sidebar.text_input(
     'Cari berdasarkan Nama Posisi (cth: admin, perawat):'
 )
 
+# --- FITUR BARU: FILTER DINAMIS ---
 # Filter 2: Provinsi (Multi-select)
 provinsi_pilihan = st.sidebar.multiselect(
     'Pilih Provinsi:',
     options=list_provinsi_unik,
-    default=[] # Default-nya kosong
-)
-
-# Filter 3: Kota/Kabupaten (Multi-select)
-kota_pilihan = st.sidebar.multiselect(
-    'Pilih Kota/Kabupaten:',
-    options=list_kota_unik,
     default=[]
 )
+
+# Filter 3: Kota/Kabupaten (Multi-select DINAMIS)
+if provinsi_pilihan:
+    # Jika provinsi dipilih, filter daftar kota
+    kota_tersedia = sorted(df[df['perusahaan.nama_provinsi'].isin(provinsi_pilihan)]['perusahaan.nama_kabupaten'].dropna().unique())
+else:
+    # Jika tidak, tampilkan semua kota (atau bisa juga kita biarkan kosong)
+    kota_tersedia = list_kota_unik 
+
+kota_pilihan = st.sidebar.multiselect(
+    'Pilih Kota/Kabupaten:',
+    options=kota_tersedia,
+    default=[]
+)
+# --- AKHIR FITUR BARU ---
 
 # Filter 4: Jurusan (Multi-select)
 jurusan_pilihan = st.sidebar.multiselect(
@@ -75,49 +78,84 @@ jurusan_pilihan = st.sidebar.multiselect(
 )
 
 # ===============================================
-# --- 6. Logika Filtering Data ---
+# --- 6. Logika Filtering Data (SAMA SEPERTI LAMA) ---
 # ===============================================
-
-# Mulai dengan data penuh, lalu kita "pangkas"
 df_hasil = df
 
-# Terapkan filter 1 (Posisi)
 if posisi_search:
     df_hasil = df_hasil[df_hasil['posisi'].str.contains(posisi_search, case=False, na=False)]
-
-# Terapkan filter 2 (Provinsi)
-if provinsi_pilihan: # Jika list-nya tidak kosong
+if provinsi_pilihan:
     df_hasil = df_hasil[df_hasil['perusahaan.nama_provinsi'].isin(provinsi_pilihan)]
-
-# Terapkan filter 3 (Kota)
 if kota_pilihan:
     df_hasil = df_hasil[df_hasil['perusahaan.nama_kabupaten'].isin(kota_pilihan)]
-
-# Terapkan filter 4 (Jurusan) - Ini logikanya sedikit canggih
 if jurusan_pilihan:
-    # Buat pola regex: 'Akuntansi|Manajemen|Psikologi'
-    # Ini akan mencari baris yang mengandung SALAH SATU dari jurusan yang dipilih
     pola_regex_jurusan = '|'.join([re.escape(j) for j in jurusan_pilihan])
     df_hasil = df_hasil[df_hasil['program_studi'].str.contains(pola_regex_jurusan, case=False, na=False)]
 
 
 # ===============================================
-# --- 7. Tampilkan Hasil ---
+# --- 7. Tampilkan Hasil --- (BAGIAN INI DI-UPGRADE TOTAL)
 # ===============================================
-st.header(f'Menampilkan {len(df_hasil)} Lowongan Terfilter')
 
-# Pilih kolom mana saja yang mau ditampilkan
-kolom_tampil = [
-    'posisi', 
-    'perusahaan.nama_perusahaan', 
-    'program_studi', 
-    'perusahaan.nama_kabupaten', 
-    'perusahaan.nama_provinsi',
-    'jumlah_kuota'
-]
+# --- FITUR BARU: KPI / METRIK ---
+st.header('Ringkasan Hasil Filter')
+total_lowongan = len(df_hasil)
+total_kuota = df_hasil['jumlah_kuota'].sum()
+total_perusahaan = df_hasil['perusahaan.nama_perusahaan'].nunique()
 
-# Tampilkan dataframe
-st.dataframe(df_hasil[kolom_tampil], use_container_width=True, hide_index=True)
+col1, col2, col3 = st.columns(3)
+col1.metric("Total Lowongan Ditemukan", f"{total_lowongan:,}")
+col2.metric("Total Kuota Magang", f"{total_kuota:,}")
+col3.metric("Total Perusahaan Unik", f"{total_perusahaan:,}")
+
+st.markdown("---") # Garis pemisah
+
+# --- FITUR BARU: GRAFIK INTERAKTIF ---
+st.header('Grafik Analisis')
+if not df_hasil.empty:
+    col_grafik1, col_grafik2 = st.columns(2)
+    
+    with col_grafik1:
+        st.subheader("10 Provinsi Lowongan Terbanyak")
+        prov_count = df_hasil['perusahaan.nama_provinsi'].value_counts().head(10)
+        st.bar_chart(prov_count)
+        
+    with col_grafik2:
+        st.subheader("10 Jurusan Paling Dicari")
+        # Ini mengambil data "Akuntansi, Manajemen" dan memisahnya
+        jurusan_flat_list = [j for sublist in df_hasil['program_studi'].str.split(', ') if isinstance(sublist, list) for j in sublist]
+        jurusan_count = pd.Series(jurusan_flat_list).value_counts().head(10)
+        st.bar_chart(jurusan_count)
+else:
+    st.info("Tidak ada data terfilter untuk ditampilkan di grafik.")
+
+st.markdown("---") # Garis pemisah
+
+# --- FITUR BARU: TAMPILAN KARTU (CARD) ---
+st.header(f'Hasil Lowongan ({total_lowongan} ditemukan)')
+
+# Batasi tampilan agar tidak crash (misal: hanya 100 hasil pertama)
+HASIL_LIMIT = 100 
+for index, row in df_hasil.head(HASIL_LIMIT).iterrows():
+    # st.container(border=True) membuat kotak border yang rapi
+    with st.container(border=True):
+        st.subheader(row['posisi'])
+        st.write(f"**🏢 Perusahaan:** {row['perusahaan.nama_perusahaan']}")
+        st.write(f"**📍 Lokasi:** {row['perusahaan.nama_kabupaten']}, {row['perusahaan.nama_provinsi']}")
+        st.write(f"**🎓 Jurusan:** {row['program_studi']}")
+        
+        # Buat kolom untuk kuota
+        col_info1, col_info2 = st.columns([3, 1]) # Kolom pertama 3x lebih besar
+        with col_info1:
+             st.write(f"**🎓 Jenjang:** {row['jenjang']}")
+        with col_info2:
+            # st.info() memberi kotak biru
+            st.info(f"**Kuota: {row['jumlah_kuota']}**")
+
+    st.write("") # Memberi spasi antar kartu
+
+if total_lowongan > HASIL_LIMIT:
+    st.warning(f"Hanya menampilkan {HASIL_LIMIT} hasil pertama. Gunakan filter untuk menyempurnakan pencarian Anda.")
 
 # (Opsional) Tampilkan data mentah jika ingin debug
 with st.expander("Tampilkan Data Mentah Lengkap (Hasil Filter)"):
