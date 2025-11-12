@@ -1,12 +1,13 @@
 import streamlit as st
 import pandas as pd
-import re # Ini untuk filter jurusan yang canggih
+import re # Untuk filter jurusan
+import ast # Untuk membersihkan data 'jenjang'
 
 # --- 1. Konfigurasi Halaman ---
 st.set_page_config(
     page_title="Filter Lowongan Magang",
     page_icon="🔎",
-    layout="wide" # Layout "wide" agar tabelnya muat
+    layout="wide"
 )
 
 # --- 2. Fungsi Load Data (Cache) ---
@@ -26,6 +27,15 @@ def load_data():
     list_kota_unik = sorted(df['perusahaan.nama_kabupaten'].dropna().unique())
     
     return df, list_jurusan_unik, list_provinsi_unik, list_kota_unik
+
+# --- Fungsi BANTUAN untuk membersihkan kolom 'jenjang' ---
+def parse_jenjang(jenjang_str):
+    try:
+        # Mengubah string '["Sarjana"]' menjadi list ['Sarjana']
+        return ast.literal_eval(jenjang_str)
+    except (ValueError, SyntaxError):
+        # Jika data error atau kosong
+        return []
 
 # --- 3. Muat Data ---
 with st.spinner('Memuat 37.000+ data lowongan...'):
@@ -91,7 +101,7 @@ if jurusan_pilihan:
     df_hasil = df_hasil[df_hasil['program_studi'].str.contains(pola_regex_jurusan, case=False, na=False)]
 
 # ===============================================
-# --- 7. Tampilkan Hasil --- (MODIFIKASI)
+# --- 7. Tampilkan Hasil --- (POSISI DITUKAR)
 # ===============================================
 
 # --- FITUR KPI / METRIK (DISIMPAN) ---
@@ -107,25 +117,9 @@ col3.metric("Total Perusahaan Unik", f"{total_perusahaan:,}")
 
 st.markdown("---") # Garis pemisah
 
-# --- FITUR GRAFIK (DIEDIT) ---
-st.header('Grafik Analisis')
-if not df_hasil.empty:
-    # --- Grafik Provinsi DIHAPUS ---
-    
-    # --- Grafik Jurusan DISIMPAN ---
-    st.subheader("10 Jurusan Paling Dicari (dalam hasil filter)")
-    jurusan_flat_list = [j for sublist in df_hasil['program_studi'].str.split(', ') if isinstance(sublist, list) for j in sublist]
-    jurusan_count = pd.Series(jurusan_flat_list).value_counts().head(10)
-    st.bar_chart(jurusan_count)
-else:
-    st.info("Tidak ada data terfilter untuk ditampilkan di grafik.")
-
-st.markdown("---") # Garis pemisah
-
-# --- FITUR TAMPILAN TABEL (DIKEMBALIKAN) ---
+# --- TAMPILAN TABEL (DIPINDAH KE ATAS) ---
 st.header(f'Menampilkan {len(df_hasil)} Lowongan Terfilter')
 
-# Pilih kolom mana saja yang mau ditampilkan
 kolom_tampil = [
     'posisi', 
     'perusahaan.nama_perusahaan', 
@@ -134,11 +128,44 @@ kolom_tampil = [
     'perusahaan.nama_provinsi',
     'jumlah_kuota'
 ]
-
-# Tampilkan dataframe (dari app.py versi 1)
-# Ditambahkan hide_index=True agar kolom '0, 1, 2' hilang
 st.dataframe(df_hasil[kolom_tampil], use_container_width=True, hide_index=True)
 
-# (Opsional) Tampilkan data mentah jika ingin debug
+# (Opsional) Tampilkan data mentah
 with st.expander("Tampilkan Data Mentah Lengkap (Hasil Filter)"):
     st.dataframe(df_hasil, hide_index=True)
+
+st.markdown("---") # Garis pemisah
+
+# --- FITUR GRAFIK (DIPINDAH KE BAWAH + DITAMBAH) ---
+st.header('Grafik Analisis')
+if not df_hasil.empty:
+    
+    # --- GRAFIK LAMA (JURUSAN) & GRAFIK BARU (PERUSAHAAN) ---
+    col_grafik1, col_grafik2 = st.columns(2)
+    
+    with col_grafik1:
+        st.subheader("10 Jurusan Paling Dicari")
+        jurusan_flat_list = [j for sublist in df_hasil['program_studi'].str.split(', ') if isinstance(sublist, list) for j in sublist]
+        jurusan_count = pd.Series(jurusan_flat_list).value_counts().head(10)
+        st.bar_chart(jurusan_count)
+        
+    with col_grafik2:
+        # --- VISUALISASI BARU 1 ---
+        st.subheader("10 Perusahaan Kuota Terbanyak")
+        perusahaan_count = df_hasil.groupby('perusahaan.nama_perusahaan')['jumlah_kuota'].sum().sort_values(ascending=False).head(10)
+        st.bar_chart(perusahaan_count)
+
+    st.markdown("---") # Pemisah grafik
+
+    # --- VISUALISASI BARU 2 ---
+    st.subheader("Distribusi Jenjang Pendidikan yang Dibutuhkan")
+    # Terapkan fungsi 'parse_jenjang' untuk membersihkan
+    jenjang_list = df_hasil['jenjang'].apply(parse_jenjang)
+    # Explode: memisahkan ['Diploma', 'Sarjana'] menjadi 2 baris
+    jenjang_exploded = jenjang_list.explode()
+    # Hitung jumlahnya
+    jenjang_count = jenjang_exploded.value_counts()
+    st.bar_chart(jenjang_count)
+
+else:
+    st.info("Tidak ada data terfilter untuk ditampilkan di grafik.")
