@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import re # Untuk filter jurusan
-import ast # Untuk membersihkan data 'jenjang'
+
 import plotly.express as px # <-- TAMBAHKAN INI
 
 # --- 1. Konfigurasi Halaman ---
@@ -195,4 +195,5 @@ if not df_hasil.empty:
         # --- AKHIR KODE BARU ---
 else:
     st.info("Tidak ada data terfilter untuk ditampilkan di grafik.")
+
 
