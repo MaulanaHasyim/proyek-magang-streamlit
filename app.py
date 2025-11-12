@@ -5,7 +5,7 @@ import ast # Untuk membersihkan data 'jenjang'
 
 # --- 1. Konfigurasi Halaman ---
 st.set_page_config(
-    page_title="Dashboard Lowongan Magang",
+    page_title="Filter Lowongan Magang",
     page_icon="🔎",
     layout="wide"
 )
@@ -43,6 +43,7 @@ with st.spinner('Memuat 37.000+ data lowongan...'):
 # --- 4. Tampilan Web / Interface (UI) ---
 # ===============================================
 st.title('🔎 Dashboard Filter Lowongan Magang KEMNAKER')
+st.write(f"Total data lowongan di-crawl: {len(df)} baris")
 
 # ===============================================
 # --- 5. Sidebar untuk Filter (HANYA LOKASI) ---
@@ -136,12 +137,12 @@ total_perusahaan = df_hasil['perusahaan.nama_perusahaan'].nunique()
 col1, col2, col3 = st.columns(3)
 col1.metric("Total Lowongan Ditemukan", f"{total_lowongan:,}")
 col2.metric("Total Kuota Magang", f"{total_kuota:,}")
-col3.metric("Total Perusahaan", f"{total_perusahaan:,}")
+col3.metric("Total Perusahaan Unik", f"{total_perusahaan:,}")
 
 st.markdown("---") # Garis pemisah
 
 # --- TAMPILAN TABEL ---
-st.header(f'Menampilkan {len(df_hasil)} Lowongan')
+st.header(f'Menampilkan {len(df_hasil)} Lowongan Terfilter')
 
 kolom_tampil = [
     'posisi', 
@@ -152,6 +153,10 @@ kolom_tampil = [
     'jumlah_kuota'
 ]
 st.dataframe(df_hasil[kolom_tampil], use_container_width=True, hide_index=True)
+
+# (Opsional) Tampilkan data mentah
+with st.expander("Tampilkan Data Mentah Lengkap (Hasil Filter)"):
+    st.dataframe(df_hasil, hide_index=True)
 
 st.markdown("---") # Garis pemisah
 
