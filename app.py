@@ -117,8 +117,8 @@ kolom_tampil = [
 ]
 
 # Tampilkan dataframe
-st.dataframe(df_hasil[kolom_tampil], use_container_width=True)
+st.dataframe(df_hasil[kolom_tampil], use_container_width=True, hide_index=True)
 
 # (Opsional) Tampilkan data mentah jika ingin debug
 with st.expander("Tampilkan Data Mentah Lengkap (Hasil Filter)"):
-    st.dataframe(df_hasil)
+    st.dataframe(df_hasil, hide_index=True)
