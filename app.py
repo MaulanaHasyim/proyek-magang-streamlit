@@ -43,7 +43,7 @@ with st.spinner('Memuat 37.000+ data lowongan...'):
 # --- 4. Tampilan Web / Interface (UI) ---
 # ===============================================
 st.title('🔎 Dashboard Filter Lowongan Magang KEMNAKER')
-st.write(f"Total data lowongan di-crawl: {len(df)} baris")
+
 
 # ===============================================
 # --- 5. Sidebar untuk Filter (HANYA LOKASI) ---
@@ -142,7 +142,7 @@ col3.metric("Total Perusahaan", f"{total_perusahaan:,}")
 st.markdown("---") # Garis pemisah
 
 # --- TAMPILAN TABEL ---
-st.header(f'Menampilkan {len(df_hasil)} Lowongan Terfilter')
+st.header(f'Menampilkan {len(df_hasil)} Lowongan')
 
 kolom_tampil = [
     'posisi', 
@@ -168,3 +168,4 @@ if not df_hasil.empty:
         st.bar_chart(jurusan_count)
 else:
     st.info("Tidak ada data terfilter untuk ditampilkan di grafik.")
+
