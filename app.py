@@ -101,7 +101,7 @@ if jurusan_pilihan:
     df_hasil = df_hasil[df_hasil['program_studi'].str.contains(pola_regex_jurusan, case=False, na=False)]
 
 # ===============================================
-# --- 7. Tampilkan Hasil --- (POSISI DITUKAR)
+# --- 7. Tampilkan Hasil ---
 # ===============================================
 
 # --- FITUR KPI / METRIK (DISIMPAN) ---
@@ -117,7 +117,7 @@ col3.metric("Total Perusahaan Unik", f"{total_perusahaan:,}")
 
 st.markdown("---") # Garis pemisah
 
-# --- TAMPILAN TABEL (DIPINDAH KE ATAS) ---
+# --- TAMPILAN TABEL (DI ATAS) ---
 st.header(f'Menampilkan {len(df_hasil)} Lowongan Terfilter')
 
 kolom_tampil = [
@@ -136,36 +136,34 @@ with st.expander("Tampilkan Data Mentah Lengkap (Hasil Filter)"):
 
 st.markdown("---") # Garis pemisah
 
-# --- FITUR GRAFIK (DIPINDAH KE BAWAH + DITAMBAH) ---
+# --- FITUR GRAFIK (DI BAWAH + DIUBAH) ---
 st.header('Grafik Analisis')
 if not df_hasil.empty:
     
-    # --- GRAFIK LAMA (JURUSAN) & GRAFIK BARU (PERUSAHAAN) ---
+    # Kita buat 2 kolom lagi agar rapi
     col_grafik1, col_grafik2 = st.columns(2)
     
     with col_grafik1:
+        # --- GRAFIK LAMA (JURUSAN) ---
         st.subheader("10 Jurusan Paling Dicari")
         jurusan_flat_list = [j for sublist in df_hasil['program_studi'].str.split(', ') if isinstance(sublist, list) for j in sublist]
         jurusan_count = pd.Series(jurusan_flat_list).value_counts().head(10)
         st.bar_chart(jurusan_count)
         
     with col_grafik2:
-        # --- VISUALISASI BARU 1 ---
-        st.subheader("10 Perusahaan Kuota Terbanyak")
-        perusahaan_count = df_hasil.groupby('perusahaan.nama_perusahaan')['jumlah_kuota'].sum().sort_values(ascending=False).head(10)
-        st.bar_chart(perusahaan_count)
-
-    st.markdown("---") # Pemisah grafik
-
-    # --- VISUALISASI BARU 2 ---
-    st.subheader("Distribusi Jenjang Pendidikan yang Dibutuhkan")
-    # Terapkan fungsi 'parse_jenjang' untuk membersihkan
-    jenjang_list = df_hasil['jenjang'].apply(parse_jenjang)
-    # Explode: memisahkan ['Diploma', 'Sarjana'] menjadi 2 baris
-    jenjang_exploded = jenjang_list.explode()
-    # Hitung jumlahnya
-    jenjang_count = jenjang_exploded.value_counts()
-    st.bar_chart(jenjang_count)
+        # --- VISUALISASI BARU (PIE CHART) ---
+        st.subheader("Distribusi Jenjang Pendidikan")
+        # Terapkan fungsi 'parse_jenjang' untuk membersihkan
+        jenjang_list = df_hasil['jenjang'].apply(parse_jenjang)
+        # Explode: memisahkan ['Diploma', 'Sarjana'] menjadi 2 baris
+        jenjang_exploded = jenjang_list.explode()
+        # Hitung jumlahnya
+        jenjang_count = jenjang_exploded.value_counts()
+        
+        # --- INI PERUBAHANNYA ---
+        # Gunakan st.pie_chart
+        st.pie_chart(jenjang_count)
+        # --- SELESAI ---
 
 else:
     st.info("Tidak ada data terfilter untuk ditampilkan di grafik.")
