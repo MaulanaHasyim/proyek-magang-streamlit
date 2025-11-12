@@ -157,19 +157,8 @@ if not df_hasil.empty:
         # 1. Konversi Pandas Series menjadi DataFrame untuk Plotly
         df_jenjang = jenjang_count.reset_index()
         df_jenjang.columns = ['Jenjang', 'Jumlah']
-        
-        # 2. Buat Plotly Pie Chart (donut chart)
-        fig = px.pie(
-            df_jenjang, 
-            values='Jumlah', 
-            names='Jenjang', 
-            title='Perbandingan Jenjang Pendidikan',
-            hole=0.4 
-        )
-        
-        # 3. Tampilkan Plotly Chart
-        st.plotly_chart(fig, use_container_width=True)
-        # --- SELESAI PERBAIKAN BUG ---
+     
 
 else:
     st.info("Tidak ada data terfilter untuk ditampilkan di grafik.")
+
