@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
-import re 
-import ast 
-import plotly.express as px # <--- DIBUTUHKAN UNTUK PIE CHART
+import re # Untuk filter jurusan
+import ast # Untuk membersihkan data 'jenjang' (disimpan untuk load data)
+import plotly.express as px # <--- Disimpan jika Anda ingin Treemap lagi nanti
 
 # --- 1. Konfigurasi Halaman ---
 st.set_page_config(
@@ -28,7 +28,7 @@ def load_data():
     
     return df, list_jurusan_unik, list_provinsi_unik, list_kota_unik
 
-# Fungsi BANTUAN untuk membersihkan kolom 'jenjang'
+# Fungsi BANTUAN untuk membersihkan kolom 'jenjang' (disimpan untuk menjaga keutuhan data)
 def parse_jenjang(jenjang_str):
     try:
         return ast.literal_eval(jenjang_str)
@@ -45,11 +45,11 @@ with st.spinner('Memuat data lowongan...'):
 st.title('🔎 Dashboard Filter Lowongan Magang KEMNAKER')
 st.write(f"Total data lowongan di-crawl: {len(df)} baris")
 
-# --- 5. FORM FILTER UTAMA (SEMUA FILTER DI SINI) ---
+# --- 5. FORM FILTER UTAMA (SEMUA FILTER DIGABUNG) ---
 st.markdown("---") 
 
 with st.form(key='form_filter_utama'):
-    st.subheader("Filter Lengkap (Pilih dan Tekan Terapkan)")
+    st.subheader("Filter Lengkap")
     
     # Baris 1: Lokasi
     col_provinsi, col_kota = st.columns(2)
@@ -70,7 +70,7 @@ with st.form(key='form_filter_utama'):
     col_posisi, col_jurusan = st.columns(2)
     with col_posisi:
         posisi_search = st.text_input(
-            'Cari berdasarkan Nama Posisi:'
+            'Cari berdasarkan Nama Posisi (tekan Enter):'
         )
     with col_jurusan:
         jurusan_pilihan = st.multiselect(
@@ -81,7 +81,13 @@ with st.form(key='form_filter_utama'):
     
     # Tombol yang akan mengaktifkan semua filter
     submitted = st.form_submit_button('Terapkan Semua Filter')
-    st.markdown("---")
+
+# --- 5. Sidebar Pengaturan Baru ---
+st.sidebar.header('⚙️ Pengaturan Aplikasi')
+tampil_data_mentah = st.sidebar.checkbox('Tampilkan Data Mentah Lengkap', value=False)
+if st.sidebar.button("Reset Semua Filter"):
+    st.experimental_rerun()
+st.sidebar.markdown("---")
 
 # ===============================================
 # --- 6. Logika Filtering Data ---
@@ -101,7 +107,6 @@ if kota_pilihan:
 if jurusan_pilihan:
     pola_regex_jurusan = '|'.join([re.escape(j) for j in jurusan_pilihan])
     df_hasil = df_hasil[df_hasil['program_studi'].str.contains(pola_regex_jurusan, case=False, na=False)]
-
 
 # ===============================================
 # --- 7. Tampilkan Hasil ---
@@ -133,32 +138,24 @@ kolom_tampil = [
 ]
 st.dataframe(df_hasil[kolom_tampil], use_container_width=True, hide_index=True)
 
+# --- TAMPILKAN DATA MENTAH (TERGANTUNG SIDEBAR) ---
+if tampil_data_mentah:
+    st.subheader("Data Mentah Lengkap (Dirohkan dari Pengaturan)")
+    st.dataframe(df_hasil, hide_index=True)
+
 st.markdown("---") 
 
-# --- FITUR GRAFIK ---
+# --- FITUR GRAFIK (HANYA BAR CHART) ---
 st.header('Grafik Analisis')
 if not df_hasil.empty:
     
-    col_grafik1, col_grafik2 = st.columns(2)
+    # --- GRAFIK JURUSAN (FULL WIDTH) ---
+    st.subheader("10 Jurusan Paling Dicari")
+    jurusan_flat_list = [j for sublist in df_hasil['program_studi'].str.split(', ') if isinstance(sublist, list) for j in sublist]
+    jurusan_count = pd.Series(jurusan_flat_list).value_counts().head(10)
     
-    with col_grafik1:
-        st.subheader("10 Jurusan Paling Dicari")
-        jurusan_flat_list = [j for sublist in df_hasil['program_studi'].str.split(', ') if isinstance(sublist, list) for j in sublist]
-        jurusan_count = pd.Series(jurusan_flat_list).value_counts().head(10)
-        st.bar_chart(jurusan_count)
-        
-    with col_grafik2:
-        st.subheader("Distribusi Jenjang Pendidikan")
-        # --- PERBAIKAN BUG PIE CHART DENGAN PLOTLY ---
-        jenjang_list = df_hasil['jenjang'].apply(parse_jenjang)
-        jenjang_exploded = jenjang_list.explode()
-        jenjang_count = jenjang_exploded.value_counts()
-
-        # 1. Konversi Pandas Series menjadi DataFrame untuk Plotly
-        df_jenjang = jenjang_count.reset_index()
-        df_jenjang.columns = ['Jenjang', 'Jumlah']
-     
-
+    # Menampilkan Bar Chart dengan lebar penuh
+    st.bar_chart(jurusan_count)
+    
 else:
     st.info("Tidak ada data terfilter untuk ditampilkan di grafik.")
-
