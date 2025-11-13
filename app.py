@@ -1,11 +1,12 @@
 import streamlit as st
 import pandas as pd
-import re # Untuk filter jurusan
-import ast # Untuk membersihkan data 'jenjang' (disimpan untuk load data)
+import re # Untuk filter teks
+import ast # Untuk membersihkan data list/json
+import plotly.express as px # Untuk grafik canggih (meski sekarang hanya pakai st.bar_chart)
 
 # --- 1. Konfigurasi Halaman ---
 st.set_page_config(
-    page_title="Filter Lowongan Magang",
+    page_title="Dashboard Magang KEMNAKER",
     page_icon="🔎",
     layout="wide"
 )
@@ -13,23 +14,27 @@ st.set_page_config(
 # --- 2. Fungsi Load Data (Cache) ---
 @st.cache_data
 def load_data():
+    # Menggunakan nama file CSV yang baru
     df = pd.read_csv("data_lowongan_BERSIH.csv")
     
-    # Siapkan Filter Lists
+    # --- Siapkan List Pilihan untuk Filter ---
+    # Jurusan
     all_jurusan_set = set()
-    for item_list in df['program_studi'].str.split(', '):
+    for item_list in df['jurusan_rapi'].str.split(', '):
         if isinstance(item_list, list):
             all_jurusan_set.update(item_list)
     list_jurusan_unik = sorted(list(all_jurusan_set))
     
-    list_provinsi_unik = sorted(df['perusahaan.nama_provinsi'].dropna().unique())
-    list_kota_unik = sorted(df['perusahaan.nama_kabupaten'].dropna().unique())
+    # Lokasi
+    list_provinsi_unik = sorted(df['Provinsi Perusahaan'].dropna().unique())
+    list_kota_unik = sorted(df['Kabupaten/Kota Perusahaan'].dropna().unique())
     
     return df, list_jurusan_unik, list_provinsi_unik, list_kota_unik
 
-# Fungsi BANTUAN untuk membersihkan kolom 'jenjang' (disimpan untuk menjaga keutuhan data)
+# --- Fungsi BANTUAN untuk membersihkan kolom 'jenjang' (untuk Grafik Jenjang jika diaktifkan) ---
 def parse_jenjang(jenjang_str):
     try:
+        # Mengubah string '["Sarjana"]' menjadi list ['Sarjana']
         return ast.literal_eval(jenjang_str)
     except (ValueError, SyntaxError):
         return []
@@ -41,7 +46,7 @@ with st.spinner('Memuat data lowongan...'):
 # ===============================================
 # --- 4. Tampilan Web / Interface (UI) ---
 # ===============================================
-st.title('🔎 Dashboard Filter Lowongan Magang KEMNAKER')
+st.title('🔎 Dashboard Analisis Lowongan Magang KEMNAKER')
 st.write(f"Total data lowongan di-crawl: {len(df)} baris")
 
 # --- 5. FORM FILTER UTAMA (SEMUA FILTER DIGABUNG) ---
@@ -49,6 +54,7 @@ st.markdown("---")
 
 with st.form(key='form_filter_utama'):
     st.subheader("Filter Lengkap")
+    st.caption("Semua filter akan diterapkan setelah Anda menekan tombol 'Terapkan Semua Filter'.")
     
     # Baris 1: Lokasi
     col_provinsi, col_kota = st.columns(2)
@@ -85,7 +91,7 @@ with st.form(key='form_filter_utama'):
 st.sidebar.header('⚙️ Pengaturan Aplikasi')
 tampil_data_mentah = st.sidebar.checkbox('Tampilkan Data Mentah Lengkap', value=False)
 if st.sidebar.button("Reset Semua Filter"):
-    st.experimental_rerun()
+    st.experimental_rerun() # Memaksa aplikasi kembali ke kondisi awal
 st.sidebar.markdown("---")
 
 # ===============================================
@@ -95,17 +101,22 @@ df_hasil = df
 
 # Filter 1 (Posisi)
 if posisi_search:
-    df_hasil = df_hasil[df_hasil['posisi'].str.contains(posisi_search, case=False, na=False)]
+    # Menggunakan nama kolom yang baru: 'Posisi'
+    df_hasil = df_hasil[df_hasil['Posisi'].str.contains(posisi_search, case=False, na=False)]
 # Filter 2 (Provinsi)
 if provinsi_pilihan:
-    df_hasil = df_hasil[df_hasil['perusahaan.nama_provinsi'].isin(provinsi_pilihan)]
+    # Menggunakan nama kolom yang baru: 'Provinsi Perusahaan'
+    df_hasil = df_hasil[df_hasil['Provinsi Perusahaan'].isin(provinsi_pilihan)]
 # Filter 3 (Kota)
 if kota_pilihan:
-    df_hasil = df_hasil[df_hasil['perusahaan.nama_kabupaten'].isin(kota_pilihan)]
+    # Menggunakan nama kolom yang baru: 'Kabupaten/Kota Perusahaan'
+    df_hasil = df_hasil[df_hasil['Kabupaten/Kota Perusahaan'].isin(kota_pilihan)]
 # Filter 4 (Jurusan)
 if jurusan_pilihan:
+    # Menggunakan nama kolom yang baru: 'jurusan_rapi'
     pola_regex_jurusan = '|'.join([re.escape(j) for j in jurusan_pilihan])
-    df_hasil = df_hasil[df_hasil['program_studi'].str.contains(pola_regex_jurusan, case=False, na=False)]
+    df_hasil = df_hasil[df_hasil['jurusan_rapi'].str.contains(pola_regex_jurusan, case=False, na=False)]
+
 
 # ===============================================
 # --- 7. Tampilkan Hasil ---
@@ -114,8 +125,8 @@ if jurusan_pilihan:
 # --- FITUR KPI / METRIK ---
 st.header('Ringkasan Hasil Filter')
 total_lowongan = len(df_hasil)
-total_kuota = df_hasil['jumlah_kuota'].sum()
-total_perusahaan = df_hasil['perusahaan.nama_perusahaan'].nunique()
+total_kuota = df_hasil['Kuota'].sum() # Menggunakan nama kolom baru
+total_perusahaan = df_hasil['Nama Perusahaan'].nunique() # Menggunakan nama kolom baru
 
 col1, col2, col3 = st.columns(3)
 col1.metric("Total Lowongan Ditemukan", f"{total_lowongan:,}")
@@ -128,14 +139,32 @@ st.markdown("---")
 st.header(f'Menampilkan {len(df_hasil)} Lowongan Terfilter')
 
 kolom_tampil = [
-    'posisi', 
-    'perusahaan.nama_perusahaan', 
-    'program_studi', 
-    'perusahaan.nama_kabupaten', 
-    'perusahaan.nama_provinsi',
-    'jumlah_kuota'
+    'Posisi', 
+    'Nama Perusahaan', 
+    'jurusan_rapi', 
+    'Kabupaten/Kota Perusahaan', 
+    'Provinsi Perusahaan',
+    'Kuota',
+    'Pendaftar', # Kolom baru
+    'Peluang Lolos' # Kolom baru
 ]
-st.dataframe(df_hasil[kolom_tampil], use_container_width=True, hide_index=True)
+
+# Tampilkan dataframe dengan format Peluang Lolos yang cantik
+st.dataframe(
+    df_hasil[kolom_tampil], 
+    use_container_width=True, 
+    hide_index=True,
+    column_config={
+        "Peluang Lolos": st.column_config.NumberColumn(
+            "Peluang Lolos",
+            help="Peluang lolos berdasarkan (Kuota / Pendaftar) * 100%",
+            format="%.1f%%"  # Format menjadi 1 angka desimal + tanda %
+        ),
+        "Pendaftar": st.column_config.NumberColumn(
+            "Total Pelamar",
+        )
+    }
+)
 
 # --- TAMPILKAN DATA MENTAH (TERGANTUNG SIDEBAR) ---
 if tampil_data_mentah:
@@ -144,13 +173,15 @@ if tampil_data_mentah:
 
 st.markdown("---") 
 
-# --- FITUR GRAFIK (HANYA BAR CHART) ---
+# --- FITUR GRAFIK ---
 st.header('Grafik Analisis')
 if not df_hasil.empty:
     
     # --- GRAFIK JURUSAN (FULL WIDTH) ---
     st.subheader("10 Jurusan Paling Dicari")
-    jurusan_flat_list = [j for sublist in df_hasil['program_studi'].str.split(', ') if isinstance(sublist, list) for j in sublist]
+    
+    # Logika meratakan list jurusan ('Akuntansi, Manajemen' -> Akuntansi, Manajemen)
+    jurusan_flat_list = [j for sublist in df_hasil['jurusan_rapi'].str.split(', ') if isinstance(sublist, list) for j in sublist]
     jurusan_count = pd.Series(jurusan_flat_list).value_counts().head(10)
     
     # Menampilkan Bar Chart dengan lebar penuh
@@ -158,4 +189,3 @@ if not df_hasil.empty:
     
 else:
     st.info("Tidak ada data terfilter untuk ditampilkan di grafik.")
-
