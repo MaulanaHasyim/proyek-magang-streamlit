@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import re 
 import ast 
-import plotly.express as px
+import plotly.express as px 
 
 # --- 1. Konfigurasi Halaman ---
 st.set_page_config(
@@ -16,7 +16,7 @@ st.set_page_config(
 def load_data():
     df = pd.read_csv("data_lowongan_BERSIH.csv")
     
-    # Siapkan Filter Lists
+    # Siapkan Filter Lists dari kolom baru
     all_jurusan_set = set()
     for item_list in df['jurusan_rapi'].str.split(', '):
         if isinstance(item_list, list):
@@ -80,7 +80,6 @@ with col_jurusan:
     )
     
 st.markdown("---") 
-# --- AKHIR WIDGET FILTER UTAMA ---
 
 # --- 5. Sidebar Pengaturan Baru ---
 st.sidebar.header('⚙️ Pengaturan Aplikasi')
@@ -124,6 +123,7 @@ st.markdown("---")
 # --- TAMPILAN TABEL ---
 st.header(f'Menampilkan {len(df_hasil)} Lowongan Terfilter')
 
+# Daftar kolom yang akan ditampilkan
 kolom_tampil = [
     'Posisi', 
     'Nama Perusahaan', 
@@ -147,7 +147,8 @@ st.dataframe(
         ),
         "Pendaftar": st.column_config.NumberColumn(
             "Total Pelamar",
-        )
+        ),
+        "jurusan_rapi": "Program Studi" # <-- PERBAIKAN NAMA KOLOM FINAL
     }
 )
 
