@@ -170,14 +170,14 @@ if not df_hasil.empty:
     
     with col_grafik1:
         # --- GRAFIK 1: BAR CHART JURUSAN ---
-        st.subheader("1. 10 Jurusan Paling Dicari")
+        st.subheader("Top 10 Jurusan Paling Dicari")
         jurusan_flat_list = [j for sublist in df_hasil['jurusan_rapi'].str.split(', ') if isinstance(sublist, list) for j in sublist]
         jurusan_count = pd.Series(jurusan_flat_list).value_counts().head(10)
         st.bar_chart(jurusan_count)
     
     with col_grafik2:
         # --- GRAFIK 2: DONUT CHART JENJANG ---
-        st.subheader("2. Perbandingan Kebutuhan Sarjana vs. Diploma")
+        st.subheader("Permintaan Level Pendidikan")
         
         jenjang_exploded = df_hasil['Jenjang'].apply(parse_jenjang).explode()
 
@@ -208,7 +208,7 @@ if not df_hasil.empty:
     # -----------------------------------------------
     # 3. TREEMAP (FULL WIDTH)
     # -----------------------------------------------
-    st.subheader("3. Sebaran Kuota Magang per Lokasi")
+    st.subheader("Sebaran Kuota Magang per Lokasi")
 
     df_treemap = df_hasil.groupby(
         ['Provinsi Perusahaan', 'Kabupaten/Kota Perusahaan']
@@ -230,4 +230,5 @@ if not df_hasil.empty:
     
 else:
     st.info("Tidak ada data terfilter untuk ditampilkan di grafik.")
+
 
