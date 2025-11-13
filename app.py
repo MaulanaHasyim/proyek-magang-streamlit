@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
-import re 
-import ast 
-import plotly.express as px # DIBUTUHKAN UNTUK TREEMAP
+import re # Untuk filter teks
+import ast # Untuk membersihkan data list/json
+import plotly.express as px # DIBUTUHKAN UNTUK SEMUA GRAFIK CANGGIH
 
 # --- 1. Konfigurasi Halaman ---
 st.set_page_config(
@@ -158,41 +158,77 @@ if tampil_data_mentah:
 
 st.markdown("---") 
 
-# --- FITUR GRAFIK (BAR CHART DAN TREEMAP) ---
-st.header('Grafik Analisis')
+# ===============================================
+# --- 8. FITUR GRAFIK (FINAL ORDER) ---
+# ===============================================
+st.header('Grafik Analisis Mendalam')
 if not df_hasil.empty:
     
-    col_grafik1, col_grafik2 = st.columns(2)
+    # -----------------------------------------------
+    # 1. BAR CHART (JURUSAN)
+    # -----------------------------------------------
+    st.subheader("1. 10 Jurusan Paling Dicari")
     
-    with col_grafik1:
-        # --- GRAFIK LAMA (JURUSAN) ---
-        st.subheader("10 Jurusan Paling Dicari")
-        jurusan_flat_list = [j for sublist in df_hasil['jurusan_rapi'].str.split(', ') if isinstance(sublist, list) for j in sublist]
-        jurusan_count = pd.Series(jurusan_flat_list).value_counts().head(10)
-        st.bar_chart(jurusan_count)
-        
-    with col_grafik2:
-        # --- GRAFIK BARU (TREEMAP) ---
-        st.subheader("Sebaran Kuota Magang per Lokasi")
-        
-        # 1. Agregasi data untuk Treemap (Ini adalah area kode yang diperbaiki)
-        df_treemap = df_hasil.groupby(
-            ['Provinsi Perusahaan', 'Kabupaten/Kota Perusahaan']
-        )['Kuota'].sum().reset_index() # <-- PASTIKAN KURUNG SIKU DAN KURUNG BIASA TERTUTUP DI SINI
-        
-        df_treemap.columns = ['Provinsi', 'Kota', 'Total Kuota']
+    jurusan_flat_list = [j for sublist in df_hasil['jurusan_rapi'].str.split(', ') if isinstance(sublist, list) for j in sublist]
+    jurusan_count = pd.Series(jurusan_flat_list).value_counts().head(10)
+    
+    st.bar_chart(jurusan_count)
+    st.markdown("---")
+    
+    # -----------------------------------------------
+    # 2. DONUT CHART (JENJANG PENDIDIKAN)
+    # -----------------------------------------------
+    st.subheader("2. Perbandingan Kebutuhan Sarjana vs. Diploma")
+    
+    # Explode Jenjang dan Kategorisasi
+    jenjang_exploded = df_hasil['Jenjang'].apply(parse_jenjang).explode()
 
-        # 2. Buat Plotly Treemap
-        fig = px.treemap( # <-- BUG SEBELUMNYA ADA DI SEKITAR SINI
-            df_treemap, 
-            path=['Provinsi', 'Kota'],
-            values='Total Kuota',      
-            title='Sebaran Kuota Magang (Kuota Total)',
-            color_continuous_scale='RdBu'
-        ) # <-- PASTIKAN KURUNG TUTUP HANYA ADA SATU DI SINI
+    def categorize_jenjang_simple(level):
+        level = str(level).upper()
+        if 'SARJANA' in level or 'S1' in level or 'S2' in level or 'S3' in level:
+            return 'Sarjana (S1+)'
+        elif 'DIPLOMA' in level or 'D1' in level or 'D2' in level or 'D3' in level or 'D4' in level:
+            return 'Diploma (D1-D4)'
+        else:
+            return 'Lainnya / SMA/SMK'
 
-        fig.update_traces(textinfo='label+percent entry')
-        st.plotly_chart(fig, use_container_width=True)
+    jenjang_comparison = jenjang_exploded.apply(categorize_jenjang_simple).value_counts().reset_index()
+    jenjang_comparison.columns = ['Level', 'Jumlah']
+    
+    # Buat Plotly Donut Chart
+    fig_donut = px.pie(
+        jenjang_comparison, 
+        values='Jumlah', 
+        names='Level', 
+        title='Permintaan Level Pendidikan',
+        hole=0.5,
+        color_discrete_sequence=px.colors.sequential.RdBu
+    )
+    st.plotly_chart(fig_donut, use_container_width=True)
+    st.markdown("---")
 
+    # -----------------------------------------------
+    # 3. TREEMAP (LOKASI KUOTA)
+    # -----------------------------------------------
+    st.subheader("3. Sebaran Kuota Magang per Lokasi")
+
+    df_treemap = df_hasil.groupby(
+        ['Provinsi Perusahaan', 'Kabupaten/Kota Perusahaan']
+    )['Kuota'].sum().reset_index()
+    
+    df_treemap.columns = ['Provinsi', 'Kota', 'Total Kuota']
+
+    fig_treemap = px.treemap(
+        df_treemap, 
+        path=['Provinsi', 'Kota'],
+        values='Total Kuota',      
+        title='Sebaran Kuota Magang (Kuota Total)',
+        color_continuous_scale='Sunsetdark' # Menggunakan skema warna yang berbeda
+    )
+
+    fig_treemap.update_traces(textinfo='label+percent entry')
+    st.plotly_chart(fig_treemap, use_container_width=True)
+    
+    
 else:
     st.info("Tidak ada data terfilter untuk ditampilkan di grafik.")
