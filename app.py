@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
-import re # Untuk filter teks
-import ast # Untuk membersihkan data list/json
-import plotly.express as px # DIBUTUHKAN UNTUK SEMUA GRAFIK CANGGIH
+import re 
+import ast 
+import plotly.express as px
 
 # --- 1. Konfigurasi Halaman ---
 st.set_page_config(
@@ -16,7 +16,7 @@ st.set_page_config(
 def load_data():
     df = pd.read_csv("data_lowongan_BERSIH.csv")
     
-    # Siapkan Filter Lists
+    # Siapkan Filter Lists dari kolom baru
     all_jurusan_set = set()
     for item_list in df['jurusan_rapi'].str.split(', '):
         if isinstance(item_list, list):
@@ -45,7 +45,7 @@ with st.spinner('Memuat data lowongan...'):
 st.title('🔎 Dashboard Analisis Lowongan Magang KEMNAKER')
 st.write(f"Total data lowongan di-crawl: {len(df)} baris")
 
-# --- 5. FORM FILTER UTAMA (SEMUA FILTER DIGABUNG) ---
+# --- 5. FORM FILTER UTAMA ---
 st.markdown("---") 
 
 with st.form(key='form_filter_utama'):
@@ -164,51 +164,48 @@ st.markdown("---")
 st.header('Grafik Analisis Mendalam')
 if not df_hasil.empty:
     
-    # -----------------------------------------------
-    # 1. BAR CHART (JURUSAN)
-    # -----------------------------------------------
-    st.subheader("1. 10 Jurusan Paling Dicari")
+    # --- BARIS 1: BAR CHART (JURUSAN) dan DONUT CHART (JENJANG) ---
+    col_grafik1, col_grafik2 = st.columns(2)
     
-    jurusan_flat_list = [j for sublist in df_hasil['jurusan_rapi'].str.split(', ') if isinstance(sublist, list) for j in sublist]
-    jurusan_count = pd.Series(jurusan_flat_list).value_counts().head(10)
+    # --- KIRI: BAR CHART JURUSAN ---
+    with col_grafik1:
+        st.subheader("1. 10 Jurusan Paling Dicari")
+        jurusan_flat_list = [j for sublist in df_hasil['jurusan_rapi'].str.split(', ') if isinstance(sublist, list) for j in sublist]
+        jurusan_count = pd.Series(jurusan_flat_list).value_counts().head(10)
+        st.bar_chart(jurusan_count)
     
-    st.bar_chart(jurusan_count)
-    st.markdown("---")
-    
-    # -----------------------------------------------
-    # 2. DONUT CHART (JENJANG PENDIDIKAN)
-    # -----------------------------------------------
-    st.subheader("2. Perbandingan Kebutuhan Sarjana vs. Diploma")
-    
-    # Explode Jenjang dan Kategorisasi
-    jenjang_exploded = df_hasil['Jenjang'].apply(parse_jenjang).explode()
+    # --- KANAN: DONUT CHART JENJANG ---
+    with col_grafik2:
+        st.subheader("2. Perbandingan Kebutuhan Sarjana vs. Diploma")
+        
+        jenjang_exploded = df_hasil['Jenjang'].apply(parse_jenjang).explode()
 
-    def categorize_jenjang_simple(level):
-        level = str(level).upper()
-        if 'SARJANA' in level or 'S1' in level or 'S2' in level or 'S3' in level:
-            return 'Sarjana (S1+)'
-        elif 'DIPLOMA' in level or 'D1' in level or 'D2' in level or 'D3' in level or 'D4' in level:
-            return 'Diploma (D1-D4)'
-        else:
-            return 'Lainnya / SMA/SMK'
+        def categorize_jenjang_simple(level):
+            level = str(level).upper()
+            if 'SARJANA' in level or 'S1' in level or 'S2' in level or 'S3' in level:
+                return 'Sarjana (S1+)'
+            elif 'DIPLOMA' in level or 'D1' in level or 'D2' in level or 'D3' in level or 'D4' in level:
+                return 'Diploma (D1-D4)'
+            else:
+                return 'Lainnya / SMA/SMK'
 
-    jenjang_comparison = jenjang_exploded.apply(categorize_jenjang_simple).value_counts().reset_index()
-    jenjang_comparison.columns = ['Level', 'Jumlah']
+        jenjang_comparison = jenjang_exploded.apply(categorize_jenjang_simple).value_counts().reset_index()
+        jenjang_comparison.columns = ['Level', 'Jumlah']
+        
+        fig_donut = px.pie(
+            jenjang_comparison, 
+            values='Jumlah', 
+            names='Level', 
+            title='Permintaan Level Pendidikan',
+            hole=0.5,
+            color_discrete_sequence=px.colors.sequential.RdBu
+        )
+        st.plotly_chart(fig_donut, use_container_width=True)
+
+    st.markdown("---") 
     
-    # Buat Plotly Donut Chart
-    fig_donut = px.pie(
-        jenjang_comparison, 
-        values='Jumlah', 
-        names='Level', 
-        title='Permintaan Level Pendidikan',
-        hole=0.5,
-        color_discrete_sequence=px.colors.sequential.RdBu
-    )
-    st.plotly_chart(fig_donut, use_container_width=True)
-    st.markdown("---")
-
     # -----------------------------------------------
-    # 3. TREEMAP (LOKASI KUOTA)
+    # 3. TREEMAP (ROW BAWAH - FULL WIDTH)
     # -----------------------------------------------
     st.subheader("3. Sebaran Kuota Magang per Lokasi")
 
@@ -223,7 +220,7 @@ if not df_hasil.empty:
         path=['Provinsi', 'Kota'],
         values='Total Kuota',      
         title='Sebaran Kuota Magang (Kuota Total)',
-        color_continuous_scale='Sunsetdark' # Menggunakan skema warna yang berbeda
+        color_continuous_scale='Sunsetdark'
     )
 
     fig_treemap.update_traces(textinfo='label+percent entry')
