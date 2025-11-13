@@ -189,4 +189,5 @@ if not df_hasil.empty:
             path=['Provinsi', 'Kota'], # Hierarki
             values='Total Kuota',      # Ukuran kotak
             title='Sebaran Kuota Magang (Kuota Total)',
-            color_continuous
+            color_continuous)
+
