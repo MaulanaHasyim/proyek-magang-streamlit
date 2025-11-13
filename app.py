@@ -42,13 +42,13 @@ with st.spinner('Memuat data lowongan...'):
 # ===============================================
 # --- 4. Tampilan Web / Interface (UI) ---
 # ===============================================
-st.title('🔎 Dashboard Analisis Lowongan Magang KEMNAKER')
-st.write(f"Total data lowongan di-crawl: {len(df)} baris")
+st.title('🔎 Dashboard Filter Lowongan Magang KEMNAKER')
+st.write(f"by @mlnhsym")
 
 # --- 5. WIDGET FILTER UTAMA (INSTAN REFRESH) ---
 st.markdown("---") 
 
-st.subheader("Pilih Filter (Auto-Refresh Aktif)")
+st.subheader("Pilih Filter")
 st.caption("Aplikasi akan me-refresh secara instan setiap kali Anda mengubah filter.")
 
 # Baris 1: Lokasi
@@ -70,7 +70,7 @@ with col_kota:
 col_posisi, col_jurusan = st.columns(2)
 with col_posisi:
     posisi_search = st.text_input(
-        'Cari berdasarkan Nama Posisi:'
+        'Cari Posisi:'
     )
 with col_jurusan:
     jurusan_pilihan = st.multiselect(
@@ -116,12 +116,12 @@ total_perusahaan = df_hasil['Nama Perusahaan'].nunique()
 col1, col2, col3 = st.columns(3)
 col1.metric("Total Lowongan Ditemukan", f"{total_lowongan:,}")
 col2.metric("Total Kuota Magang", f"{total_kuota:,}")
-col3.metric("Total Perusahaan Unik", f"{total_perusahaan:,}")
+col3.metric("Total Perusahaan", f"{total_perusahaan:,}")
 
 st.markdown("---") 
 
 # --- TAMPILAN TABEL ---
-st.header(f'Menampilkan {len(df_hasil)} Lowongan Terfilter')
+st.header(f'Menampilkan {len(df_hasil)} Lowongan')
 
 # Daftar kolom yang akan ditampilkan
 kolom_tampil = [
@@ -230,3 +230,4 @@ if not df_hasil.empty:
     
 else:
     st.info("Tidak ada data terfilter untuk ditampilkan di grafik.")
+
