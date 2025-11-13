@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import re # Untuk filter teks
 import ast # Untuk membersihkan data list/json
-import plotly.express as px # Untuk grafik canggih (meski sekarang hanya pakai st.bar_chart)
 
 # --- 1. Konfigurasi Halaman ---
 st.set_page_config(
@@ -189,3 +188,4 @@ if not df_hasil.empty:
     
 else:
     st.info("Tidak ada data terfilter untuk ditampilkan di grafik.")
+
