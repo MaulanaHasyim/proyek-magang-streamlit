@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
-import re # Untuk filter jurusan
-import ast # Untuk membersihkan data 'jenjang'
-import plotly.express as px # <--- DIBUTUHKAN UNTUK TREEMAP
+import re 
+import ast 
+import plotly.express as px # DIBUTUHKAN UNTUK TREEMAP
 
 # --- 1. Konfigurasi Halaman ---
 st.set_page_config(
@@ -42,7 +42,7 @@ with st.spinner('Memuat data lowongan...'):
 # ===============================================
 # --- 4. Tampilan Web / Interface (UI) ---
 # ===============================================
-st.title('🔎 Dashboard Filter Lowongan Magang KEMNAKER')
+st.title('🔎 Dashboard Analisis Lowongan Magang KEMNAKER')
 st.write(f"Total data lowongan di-crawl: {len(df)} baris")
 
 # --- 5. FORM FILTER UTAMA (SEMUA FILTER DIGABUNG) ---
@@ -80,7 +80,6 @@ with st.form(key='form_filter_utama'):
             default=[]
         )
     
-    # Tombol yang akan mengaktifkan semua filter
     submitted = st.form_submit_button('Terapkan Semua Filter')
 
 # --- 5. Sidebar Pengaturan Baru ---
@@ -176,18 +175,24 @@ if not df_hasil.empty:
         # --- GRAFIK BARU (TREEMAP) ---
         st.subheader("Sebaran Kuota Magang per Lokasi")
         
-        # 1. Agregasi data untuk Treemap
+        # 1. Agregasi data untuk Treemap (Ini adalah area kode yang diperbaiki)
         df_treemap = df_hasil.groupby(
             ['Provinsi Perusahaan', 'Kabupaten/Kota Perusahaan']
-        )['Kuota'].sum().reset_index()
+        )['Kuota'].sum().reset_index() # <-- PASTIKAN KURUNG SIKU DAN KURUNG BIASA TERTUTUP DI SINI
         
         df_treemap.columns = ['Provinsi', 'Kota', 'Total Kuota']
 
         # 2. Buat Plotly Treemap
-        fig = px.treemap(
+        fig = px.treemap( # <-- BUG SEBELUMNYA ADA DI SEKITAR SINI
             df_treemap, 
-            path=['Provinsi', 'Kota'], # Hierarki
-            values='Total Kuota',      # Ukuran kotak
+            path=['Provinsi', 'Kota'],
+            values='Total Kuota',      
             title='Sebaran Kuota Magang (Kuota Total)',
-            color_continuous)
+            color_continuous_scale='RdBu'
+        ) # <-- PASTIKAN KURUNG TUTUP HANYA ADA SATU DI SINI
 
+        fig.update_traces(textinfo='label+percent entry')
+        st.plotly_chart(fig, use_container_width=True)
+
+else:
+    st.info("Tidak ada data terfilter untuk ditampilkan di grafik.")
