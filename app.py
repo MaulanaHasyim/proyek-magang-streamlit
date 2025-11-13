@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
-import re # Untuk filter teks
-import ast # Untuk membersihkan data list/json
+import re # Untuk filter jurusan
+import ast # Untuk membersihkan data 'jenjang'
+import plotly.express as px # <--- DIBUTUHKAN UNTUK TREEMAP
 
 # --- 1. Konfigurasi Halaman ---
 st.set_page_config(
@@ -13,27 +14,23 @@ st.set_page_config(
 # --- 2. Fungsi Load Data (Cache) ---
 @st.cache_data
 def load_data():
-    # Menggunakan nama file CSV yang baru
     df = pd.read_csv("data_lowongan_BERSIH.csv")
     
-    # --- Siapkan List Pilihan untuk Filter ---
-    # Jurusan
+    # Siapkan Filter Lists
     all_jurusan_set = set()
     for item_list in df['jurusan_rapi'].str.split(', '):
         if isinstance(item_list, list):
             all_jurusan_set.update(item_list)
     list_jurusan_unik = sorted(list(all_jurusan_set))
     
-    # Lokasi
     list_provinsi_unik = sorted(df['Provinsi Perusahaan'].dropna().unique())
     list_kota_unik = sorted(df['Kabupaten/Kota Perusahaan'].dropna().unique())
     
     return df, list_jurusan_unik, list_provinsi_unik, list_kota_unik
 
-# --- Fungsi BANTUAN untuk membersihkan kolom 'jenjang' (untuk Grafik Jenjang jika diaktifkan) ---
+# Fungsi BANTUAN untuk membersihkan kolom 'jenjang'
 def parse_jenjang(jenjang_str):
     try:
-        # Mengubah string '["Sarjana"]' menjadi list ['Sarjana']
         return ast.literal_eval(jenjang_str)
     except (ValueError, SyntaxError):
         return []
@@ -45,7 +42,7 @@ with st.spinner('Memuat data lowongan...'):
 # ===============================================
 # --- 4. Tampilan Web / Interface (UI) ---
 # ===============================================
-st.title('🔎 Dashboard Analisis Lowongan Magang KEMNAKER')
+st.title('🔎 Dashboard Filter Lowongan Magang KEMNAKER')
 st.write(f"Total data lowongan di-crawl: {len(df)} baris")
 
 # --- 5. FORM FILTER UTAMA (SEMUA FILTER DIGABUNG) ---
@@ -74,7 +71,7 @@ with st.form(key='form_filter_utama'):
     col_posisi, col_jurusan = st.columns(2)
     with col_posisi:
         posisi_search = st.text_input(
-            'Cari berdasarkan Nama Posisi (tekan Enter):'
+            'Cari berdasarkan Nama Posisi:'
         )
     with col_jurusan:
         jurusan_pilihan = st.multiselect(
@@ -90,7 +87,7 @@ with st.form(key='form_filter_utama'):
 st.sidebar.header('⚙️ Pengaturan Aplikasi')
 tampil_data_mentah = st.sidebar.checkbox('Tampilkan Data Mentah Lengkap', value=False)
 if st.sidebar.button("Reset Semua Filter"):
-    st.experimental_rerun() # Memaksa aplikasi kembali ke kondisi awal
+    st.experimental_rerun()
 st.sidebar.markdown("---")
 
 # ===============================================
@@ -98,24 +95,15 @@ st.sidebar.markdown("---")
 # ===============================================
 df_hasil = df
 
-# Filter 1 (Posisi)
 if posisi_search:
-    # Menggunakan nama kolom yang baru: 'Posisi'
     df_hasil = df_hasil[df_hasil['Posisi'].str.contains(posisi_search, case=False, na=False)]
-# Filter 2 (Provinsi)
 if provinsi_pilihan:
-    # Menggunakan nama kolom yang baru: 'Provinsi Perusahaan'
     df_hasil = df_hasil[df_hasil['Provinsi Perusahaan'].isin(provinsi_pilihan)]
-# Filter 3 (Kota)
 if kota_pilihan:
-    # Menggunakan nama kolom yang baru: 'Kabupaten/Kota Perusahaan'
     df_hasil = df_hasil[df_hasil['Kabupaten/Kota Perusahaan'].isin(kota_pilihan)]
-# Filter 4 (Jurusan)
 if jurusan_pilihan:
-    # Menggunakan nama kolom yang baru: 'jurusan_rapi'
     pola_regex_jurusan = '|'.join([re.escape(j) for j in jurusan_pilihan])
     df_hasil = df_hasil[df_hasil['jurusan_rapi'].str.contains(pola_regex_jurusan, case=False, na=False)]
-
 
 # ===============================================
 # --- 7. Tampilkan Hasil ---
@@ -124,8 +112,8 @@ if jurusan_pilihan:
 # --- FITUR KPI / METRIK ---
 st.header('Ringkasan Hasil Filter')
 total_lowongan = len(df_hasil)
-total_kuota = df_hasil['Kuota'].sum() # Menggunakan nama kolom baru
-total_perusahaan = df_hasil['Nama Perusahaan'].nunique() # Menggunakan nama kolom baru
+total_kuota = df_hasil['Kuota'].sum()
+total_perusahaan = df_hasil['Nama Perusahaan'].nunique()
 
 col1, col2, col3 = st.columns(3)
 col1.metric("Total Lowongan Ditemukan", f"{total_lowongan:,}")
@@ -144,11 +132,10 @@ kolom_tampil = [
     'Kabupaten/Kota Perusahaan', 
     'Provinsi Perusahaan',
     'Kuota',
-    'Pendaftar', # Kolom baru
-    'Peluang Lolos' # Kolom baru
+    'Pendaftar', 
+    'Peluang Lolos'
 ]
 
-# Tampilkan dataframe dengan format Peluang Lolos yang cantik
 st.dataframe(
     df_hasil[kolom_tampil], 
     use_container_width=True, 
@@ -157,7 +144,7 @@ st.dataframe(
         "Peluang Lolos": st.column_config.NumberColumn(
             "Peluang Lolos",
             help="Peluang lolos berdasarkan (Kuota / Pendaftar) * 100%",
-            format="%.1f%%"  # Format menjadi 1 angka desimal + tanda %
+            format="%.1f%%"
         ),
         "Pendaftar": st.column_config.NumberColumn(
             "Total Pelamar",
@@ -172,20 +159,34 @@ if tampil_data_mentah:
 
 st.markdown("---") 
 
-# --- FITUR GRAFIK ---
+# --- FITUR GRAFIK (BAR CHART DAN TREEMAP) ---
 st.header('Grafik Analisis')
 if not df_hasil.empty:
     
-    # --- GRAFIK JURUSAN (FULL WIDTH) ---
-    st.subheader("10 Jurusan Paling Dicari")
+    col_grafik1, col_grafik2 = st.columns(2)
     
-    # Logika meratakan list jurusan ('Akuntansi, Manajemen' -> Akuntansi, Manajemen)
-    jurusan_flat_list = [j for sublist in df_hasil['jurusan_rapi'].str.split(', ') if isinstance(sublist, list) for j in sublist]
-    jurusan_count = pd.Series(jurusan_flat_list).value_counts().head(10)
-    
-    # Menampilkan Bar Chart dengan lebar penuh
-    st.bar_chart(jurusan_count)
-    
-else:
-    st.info("Tidak ada data terfilter untuk ditampilkan di grafik.")
+    with col_grafik1:
+        # --- GRAFIK LAMA (JURUSAN) ---
+        st.subheader("10 Jurusan Paling Dicari")
+        jurusan_flat_list = [j for sublist in df_hasil['jurusan_rapi'].str.split(', ') if isinstance(sublist, list) for j in sublist]
+        jurusan_count = pd.Series(jurusan_flat_list).value_counts().head(10)
+        st.bar_chart(jurusan_count)
+        
+    with col_grafik2:
+        # --- GRAFIK BARU (TREEMAP) ---
+        st.subheader("Sebaran Kuota Magang per Lokasi")
+        
+        # 1. Agregasi data untuk Treemap
+        df_treemap = df_hasil.groupby(
+            ['Provinsi Perusahaan', 'Kabupaten/Kota Perusahaan']
+        )['Kuota'].sum().reset_index()
+        
+        df_treemap.columns = ['Provinsi', 'Kota', 'Total Kuota']
 
+        # 2. Buat Plotly Treemap
+        fig = px.treemap(
+            df_treemap, 
+            path=['Provinsi', 'Kota'], # Hierarki
+            values='Total Kuota',      # Ukuran kotak
+            title='Sebaran Kuota Magang (Kuota Total)',
+            color_continuous
