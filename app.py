@@ -16,7 +16,7 @@ st.set_page_config(
 def load_data():
     df = pd.read_csv("data_lowongan_BERSIH.csv")
     
-    # Siapkan Filter Lists dari kolom baru
+    # Siapkan Filter Lists
     all_jurusan_set = set()
     for item_list in df['jurusan_rapi'].str.split(', '):
         if isinstance(item_list, list):
@@ -45,42 +45,42 @@ with st.spinner('Memuat data lowongan...'):
 st.title('🔎 Dashboard Analisis Lowongan Magang KEMNAKER')
 st.write(f"Total data lowongan di-crawl: {len(df)} baris")
 
-# --- 5. FORM FILTER UTAMA ---
+# --- 5. WIDGET FILTER UTAMA (INSTAN REFRESH) ---
 st.markdown("---") 
 
-with st.form(key='form_filter_utama'):
-    st.subheader("Filter Lengkap")
-    st.caption("Semua filter akan diterapkan setelah Anda menekan tombol 'Terapkan Semua Filter'.")
+st.subheader("Pilih Filter (Auto-Refresh Aktif)")
+st.caption("Aplikasi akan me-refresh secara instan setiap kali Anda mengubah filter.")
+
+# Baris 1: Lokasi
+col_provinsi, col_kota = st.columns(2)
+with col_provinsi:
+    provinsi_pilihan = st.multiselect(
+        'Pilih Provinsi:',
+        options=list_provinsi_unik,
+        default=[]
+    )
+with col_kota:
+    kota_pilihan = st.multiselect(
+        'Pilih Kota/Kabupaten:',
+        options=list_kota_unik,
+        default=[]
+    )
     
-    # Baris 1: Lokasi
-    col_provinsi, col_kota = st.columns(2)
-    with col_provinsi:
-        provinsi_pilihan = st.multiselect(
-            'Pilih Provinsi:',
-            options=list_provinsi_unik,
-            default=[]
-        )
-    with col_kota:
-        kota_pilihan = st.multiselect(
-            'Pilih Kota/Kabupaten:',
-            options=list_kota_unik,
-            default=[]
-        )
-        
-    # Baris 2: Posisi & Jurusan
-    col_posisi, col_jurusan = st.columns(2)
-    with col_posisi:
-        posisi_search = st.text_input(
-            'Cari berdasarkan Nama Posisi:'
-        )
-    with col_jurusan:
-        jurusan_pilihan = st.multiselect(
-            'Pilih Jurusan:',
-            options=list_jurusan_unik,
-            default=[]
-        )
+# Baris 2: Posisi & Jurusan
+col_posisi, col_jurusan = st.columns(2)
+with col_posisi:
+    posisi_search = st.text_input(
+        'Cari berdasarkan Nama Posisi:'
+    )
+with col_jurusan:
+    jurusan_pilihan = st.multiselect(
+        'Pilih Jurusan:',
+        options=list_jurusan_unik,
+        default=[]
+    )
     
-    submitted = st.form_submit_button('Terapkan Semua Filter')
+st.markdown("---") 
+# --- AKHIR WIDGET FILTER UTAMA ---
 
 # --- 5. Sidebar Pengaturan Baru ---
 st.sidebar.header('⚙️ Pengaturan Aplikasi')
@@ -167,15 +167,15 @@ if not df_hasil.empty:
     # --- BARIS 1: BAR CHART (JURUSAN) dan DONUT CHART (JENJANG) ---
     col_grafik1, col_grafik2 = st.columns(2)
     
-    # --- KIRI: BAR CHART JURUSAN ---
     with col_grafik1:
+        # --- GRAFIK 1: BAR CHART JURUSAN ---
         st.subheader("1. 10 Jurusan Paling Dicari")
         jurusan_flat_list = [j for sublist in df_hasil['jurusan_rapi'].str.split(', ') if isinstance(sublist, list) for j in sublist]
         jurusan_count = pd.Series(jurusan_flat_list).value_counts().head(10)
         st.bar_chart(jurusan_count)
     
-    # --- KANAN: DONUT CHART JENJANG ---
     with col_grafik2:
+        # --- GRAFIK 2: DONUT CHART JENJANG ---
         st.subheader("2. Perbandingan Kebutuhan Sarjana vs. Diploma")
         
         jenjang_exploded = df_hasil['Jenjang'].apply(parse_jenjang).explode()
@@ -205,7 +205,7 @@ if not df_hasil.empty:
     st.markdown("---") 
     
     # -----------------------------------------------
-    # 3. TREEMAP (ROW BAWAH - FULL WIDTH)
+    # 3. TREEMAP (FULL WIDTH)
     # -----------------------------------------------
     st.subheader("3. Sebaran Kuota Magang per Lokasi")
 
